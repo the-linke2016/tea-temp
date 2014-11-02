@@ -10,4 +10,3 @@ typedef struct temperatureSense {
 	char thermData[14];
 } DS18B20_t;
 
-

@@ -1,1 +1,3 @@
-ds18b20.h~ max7219.h~ tea_temp.ino~
+*~
+*.bin
+*.elf
