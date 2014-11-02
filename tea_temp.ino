@@ -44,8 +44,8 @@ void setup() {
 	// LOOP SECTION -----D-E-B-U-G--O-N-L-Y-----
 	while(1) {
 		long int z;
-		for(z = 0; z <= 0xFFFFFFFF; z++) {
-			snprintf(pTempDisplay->string, 9, "%08X", z);
+		for(z = 0; z <= 0xFFFFFF; z++) {
+			snprintf(pTempDisplay->string, 9, "tP%06X", z);
 			//Serial.println(pTempDisplay->string);
 			pTempDisplay->updated = FALSE;
 			pTempDisplay->updated = setDispString(pTempDisplay);
@@ -58,6 +58,4 @@ void setup() {
 		}
 	}
 }
-
-
 
