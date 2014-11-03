@@ -5,8 +5,11 @@
 #include <stdbool.h>
 
 typedef struct temperatureSense {
-	int16_t data;
+	uint16_t data;
 	_Bool updated;
 	char thermData[14];
 } DS18B20_t;
 
+_Bool oneWrite(DS18B20_t *sensor) {
+	
+}

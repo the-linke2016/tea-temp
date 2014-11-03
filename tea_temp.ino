@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include "max7219.h"
+#include "ds18b20.h"
 
 extern Max7219_t tempDisplay = { // create a new display structure
 	{
@@ -58,4 +59,5 @@ void setup() {
 		}
 	}
 }
+
 
