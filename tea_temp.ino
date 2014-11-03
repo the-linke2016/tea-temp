@@ -24,7 +24,7 @@ extern Max7219_t tempDisplay = { // create a new display structure
 		(ENDLIST)
 	},
 	FALSE,	// updated false initially
-	"tp      " //initial string
+	"tP      " //initial string
 },
 *pTempDisplay = &tempDisplay; // create a pointer to the display
 
