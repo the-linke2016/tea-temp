@@ -123,7 +123,7 @@ _Bool setDisplay(Max7219_t *display) {
 	char byteHigh;
 	char retLow;
 	char retHigh;
-	_Bool robust = TRUE;
+	_Bool robust = true;
 
 	for(q = 0; display->registers[q] != ENDLIST; q++) {
 
@@ -139,7 +139,7 @@ _Bool setDisplay(Max7219_t *display) {
 		if((retLow == byteLow) && (retHigh == byteHigh))
 			;//do nothing
 		else
-			robust = FALSE;
+			robust = false;
 	}
 
 	return robust;

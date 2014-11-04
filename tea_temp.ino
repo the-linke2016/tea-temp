@@ -1,5 +1,4 @@
 #include <SPI.h>
-#include <OneWire.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -23,10 +22,19 @@ extern Max7219_t tempDisplay = { // create a new display structure
 		(DECMODE | NODECODE),
 		(ENDLIST)
 	},
-	FALSE,	// updated false initially
+	false,	// updated false initially
 	"tP      " //initial string
 },
 *pTempDisplay = &tempDisplay; // create a pointer to the display
+
+extern DS18B20_t tempSensor = {
+	0,		// readData
+	0,		// writeData
+	0,		// dataSize
+	false,	// updated
+	"null"	// thermData[14]
+},
+*pTempSensor = &tempSensor;
 
 void setup() {
 	Serial.begin(19200);
@@ -37,27 +45,25 @@ void setup() {
 	// set display
 	pTempDisplay->updated = setDispString(pTempDisplay);
 
-	if(pTempDisplay->updated == TRUE)
+	if(pTempDisplay->updated == true)
 		Serial.println("Display updated!");
 	else
 		Serial.println("What the hell happened?");
 
+	if(oneInit())
+		Serial.println("1-Wire presence pulse detected");
+	else
+		Serial.println("No presence pulse, damn!");
+
+
 	// LOOP SECTION -----D-E-B-U-G--O-N-L-Y-----
 	while(1) {
-		long int z;
-		for(z = 0; z <= 0xFFFFFF; z++) {
-			snprintf(pTempDisplay->string, 9, "tP%06X", z);
-			//Serial.println(pTempDisplay->string);
-			pTempDisplay->updated = FALSE;
-			pTempDisplay->updated = setDispString(pTempDisplay);
-			if(pTempDisplay->updated == FALSE)
-				Serial.println("Error updating display - SPI bus?");
-			else
-				Serial.println(z);
-
-			delay(25); // wait a second
-		}
+		pTempSensor->writeData = 0x00CC;
+		pTempSensor->dataSize = 8;
+		oneWrite(pTempSensor);
+		delay(250); // wait a second
 	}
 }
+
 
 
