@@ -23,7 +23,7 @@ extern Max7219_t tempDisplay = { // create a new display structure
 		(ENDLIST)
 	},
 	false,	// updated false initially
-	"tP      " //initial string
+	"AAAAFFFF" //initial string
 },
 *pTempDisplay = &tempDisplay; // create a pointer to the display
 
@@ -37,10 +37,12 @@ extern DS18B20_t tempSensor = {
 *pTempSensor = &tempSensor;
 
 void setup() {
-	Serial.begin(19200);
+	Serial.begin(115200);
 	SPI.begin(MAXCS); // CS on 52
 	Serial.print("SPI started on ");
 	Serial.println(MAXCS, DEC);
+	Serial.print("1-Wire started on ");
+	Serial.println(DQ, DEC);
 
 	// set display
 	pTempDisplay->updated = setDispString(pTempDisplay);
@@ -57,6 +59,7 @@ void setup() {
 
 	// LOOP SECTION -----D-E-B-U-G--O-N-L-Y-----
 	while(1) {
+		_Bool onewireRead = false;
 		oneInit();
 		pTempSensor->writeData = 0x00CC;
 		pTempSensor->dataSize = 8;
@@ -65,19 +68,22 @@ void setup() {
 		oneWrite(pTempSensor);
 		delay(750);
 		oneInit();
+		pTempSensor->writeData = 0x00CC;
+		oneWrite(pTempSensor);
 		pTempSensor->writeData = 0x00BE;
 		oneWrite(pTempSensor);
 		pTempSensor->dataSize = 16;
-		if(oneRead(pTempSensor)) {
-			oneInit();
-			Serial.println("Data read was: ")
-			Serial.println(pTempSensor->readData, HEX);
-		}
-		else
+		onewireRead = oneRead(pTempSensor);
+		oneInit();
+		if(onewireRead) {
+			Serial.print("Data read was: ");
+			Serial.println(pTempSensor->readData, BIN);
+		} else
 			Serial.println("Some kind of read error.");
-		delay(250); // wait a second
+		delay(2000); // wait a second
 	}
 }
+
 
 
 

@@ -117,7 +117,7 @@ typedef struct disp {
 // Typically, this should only be called from setDispString,
 // but you can call it manually if you want to update all the
 // registers in the MAX7219 from the struct.
-_Bool setDisplay(Max7219_t *display) { 
+_Bool setDisplay(Max7219_t *display) {
 	int q;
 	char byteLow;
 	char byteHigh;
@@ -146,7 +146,7 @@ _Bool setDisplay(Max7219_t *display) {
 }
 
 // This function returns the 'display code' for any digit or its ASCII representation.
-// Because of this, we need to be VERY careful when passing ASCII values that are 
+// Because of this, we need to be VERY careful when passing ASCII values that are
 // low numbers (ie, linefeed 0x0A, tab 0x09) because this will not work.
 // Essentially, make sure to strip out line feeds BEFORE calling this function.
 uint16_t retDispCode(int x) {
@@ -212,31 +212,31 @@ uint16_t retDispCode(int x) {
 		return BLANK;
 	case '*':			// since the degree symbol is non-standard, use *
 		return DEG;
-		
+
 	default:			// just in case
 		return BLANK;
 	}
 }
 uint16_t retPosCode(int x) {
 	switch(x) {
-		case 0:
-			return DIGIT0;
-		case 1:
-			return DIGIT1;
-		case 2:
-			return DIGIT2;
-		case 3:
-			return DIGIT3;
-		case 4:
-			return DIGIT4;
-		case 5:
-			return DIGIT5;
-		case 6:
-			return DIGIT6;
-		case 7:
-			return DIGIT7;
-		default:
-			return 0;
+	case 0:
+		return DIGIT0;
+	case 1:
+		return DIGIT1;
+	case 2:
+		return DIGIT2;
+	case 3:
+		return DIGIT3;
+	case 4:
+		return DIGIT4;
+	case 5:
+		return DIGIT5;
+	case 6:
+		return DIGIT6;
+	case 7:
+		return DIGIT7;
+	default:
+		return 0;
 	}
 }
 
@@ -251,5 +251,6 @@ _Bool setDispString(Max7219_t *display) {
 	}
 	return (setDisplay(display));
 }
+
 
 

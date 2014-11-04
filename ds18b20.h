@@ -6,8 +6,9 @@
 
 #define DQ 22
 typedef struct temperatureSense {
-	uint32_t readData;
+	uint16_t readData;
 	uint32_t writeData;
+	uint64_t romCode;
 	char dataSize;
 	_Bool updated;
 	char thermData[14];
@@ -46,7 +47,7 @@ _Bool oneWrite(DS18B20_t *sensor) {
 			delayMicroseconds(120);
 			pinMode(DQ, INPUT);
 		}
-		delayMicroseconds(1);
+		delayMicroseconds(10);
 	}
 	return true;
 }
@@ -57,9 +58,8 @@ _Bool oneRead(DS18B20_t *sensor) {
 	for(q = 0; q < sensor->dataSize; q++) {
 		pinMode(DQ, OUTPUT);
 		digitalWrite(DQ, LOW);
-		delayMicroseconds(2);
 		pinMode(DQ, INPUT);
-		delayMicroseconds(9);
+		delayMicroseconds(5);
 
 		if(digitalRead(DQ)) {
 			sensor->readData >> 1;
@@ -67,8 +67,10 @@ _Bool oneRead(DS18B20_t *sensor) {
 		} else {
 			sensor->readData >> 1;
 		}
+		delayMicroseconds(60);
 	}
 	return true;
 }
+
 
 
