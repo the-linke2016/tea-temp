@@ -55,12 +55,26 @@ void setup() {
 	else
 		Serial.println("No presence pulse, damn!");
 
-
 	// LOOP SECTION -----D-E-B-U-G--O-N-L-Y-----
 	while(1) {
+		oneInit();
 		pTempSensor->writeData = 0x00CC;
 		pTempSensor->dataSize = 8;
 		oneWrite(pTempSensor);
+		pTempSensor->writeData = 0x0044;
+		oneWrite(pTempSensor);
+		delay(750);
+		oneInit();
+		pTempSensor->writeData = 0x00BE;
+		oneWrite(pTempSensor);
+		pTempSensor->dataSize = 16;
+		if(oneRead(pTempSensor)) {
+			oneInit();
+			Serial.println("Data read was: ")
+			Serial.println(pTempSensor->readData, HEX);
+		}
+		else
+			Serial.println("Some kind of read error.");
 		delay(250); // wait a second
 	}
 }

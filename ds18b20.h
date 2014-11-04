@@ -6,9 +6,9 @@
 
 #define DQ 22
 typedef struct temperatureSense {
-	uint16_t readData;
-	uint16_t writeData;
-	int dataSize;
+	uint32_t readData;
+	uint32_t writeData;
+	char dataSize;
 	_Bool updated;
 	char thermData[14];
 } DS18B20_t;
@@ -67,8 +67,8 @@ _Bool oneRead(DS18B20_t *sensor) {
 		} else {
 			sensor->readData >> 1;
 		}
-		return true;
 	}
+	return true;
 }
 
 
