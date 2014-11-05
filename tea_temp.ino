@@ -76,10 +76,10 @@ void setup() {
 		onewireRead = oneRead(pTempSensor);
 		oneInit();
 		if(onewireRead) {
-			snprintf(pTempDisplay->string, 8, "%0.1f", convThermString(pTempSensor));
+			sprintf(pTempDisplay->string, "    %04.2f", convThermString(pTempSensor));
 			setDispString(pTempDisplay);
 			Serial.print("Data read was: ");
-			Serial.println(pTempSensor->readData, BIN);
+			Serial.println(pTempDisplay->string);
 		} else
 			Serial.println("Some kind of read error.");
 		delay(2000); // wait a second

@@ -243,15 +243,23 @@ uint16_t retPosCode(int x) {
 _Bool setDispString(Max7219_t *display) {
 	char s;
 	int z;
+	int d = 0;
 	for(z = 0; z < 8; z++) {
 		s = (display->string[z]);
 		
 		if(s == '\0')
 			break;
-		else if(s == '.')
-			display->registers[z-1] |= (DP);
-		else
-			display->registers[z] = (retPosCode(z) | retDispCode((int)s));
+		else {
+			if(display->string[z+1] == '.') {
+				display->registers[d] = (retPosCode(d) | retDispCode((int)s) | DP);
+				d++;
+				z++;
+			}
+			else {
+				display->registers[d] = (retPosCode(d) | retDispCode((int)s));
+				d++;
+			}
+		}
 	}
 	return (setDisplay(display));
 }

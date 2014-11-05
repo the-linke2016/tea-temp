@@ -29,6 +29,7 @@ _Bool oneInit(void) {
 		return false;
 	}
 }
+
 _Bool oneWrite(DS18B20_t *sensor) {
 	pinMode(DQ, OUTPUT);
 	int temp;
