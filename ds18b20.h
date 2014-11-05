@@ -53,24 +53,46 @@ _Bool oneWrite(DS18B20_t *sensor) {
 }
 
 _Bool oneRead(DS18B20_t *sensor) {
-
+	char temp;
+	uint16_t datatemp;
 	int q;
 	for(q = 0; q < sensor->dataSize; q++) {
 		pinMode(DQ, OUTPUT);
 		digitalWrite(DQ, LOW);
 		pinMode(DQ, INPUT);
-		delayMicroseconds(5);
-
-		if(digitalRead(DQ)) {
-			sensor->readData >> 1;
-			sensor->readData |= 0x8000;
+		delayMicroseconds(8);
+		temp = digitalRead(DQ);
+		
+		if(temp == 1) {
+			datatemp |= 0x8000;
+			datatemp >> 1;
+			
 		} else {
-			sensor->readData >> 1;
+			datatemp >> 1;
 		}
 		delayMicroseconds(60);
 	}
+	sensor->readData = datatemp;
 	return true;
 }
 
+float convThermString(DS18B20_t *sensor) {
+	uint16_t temp = sensor->readData;
+	float whole;
+	whole = (float)(temp >> 4);
+	temp = sensor->readData;
+	
+	if(temp & 0x0001)
+		whole += 0.0625;
+	if(temp & 0x0002)
+		whole += 0.125;
+	if(temp & 0x0004)
+		whole += 0.25;
+	if(temp & 0x0008)
+		whole += 0.5;
+	
+	return whole;
+	
+}
 
 

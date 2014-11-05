@@ -245,9 +245,13 @@ _Bool setDispString(Max7219_t *display) {
 	int z;
 	for(z = 0; z < 8; z++) {
 		s = (display->string[z]);
+		
 		if(s == '\0')
 			break;
-		display->registers[z] = (retPosCode(z) | retDispCode((int)s));
+		else if(s == '.')
+			display->registers[z-1] |= (DP);
+		else
+			display->registers[z] = (retPosCode(z) | retDispCode((int)s));
 	}
 	return (setDisplay(display));
 }

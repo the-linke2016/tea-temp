@@ -23,7 +23,7 @@ extern Max7219_t tempDisplay = { // create a new display structure
 		(ENDLIST)
 	},
 	false,	// updated false initially
-	"AAAAFFFF" //initial string
+	"        " //initial string
 },
 *pTempDisplay = &tempDisplay; // create a pointer to the display
 
@@ -76,6 +76,8 @@ void setup() {
 		onewireRead = oneRead(pTempSensor);
 		oneInit();
 		if(onewireRead) {
+			snprintf(pTempDisplay->string, 8, "%0.1f", convThermString(pTempSensor));
+			setDispString(pTempDisplay);
 			Serial.print("Data read was: ");
 			Serial.println(pTempSensor->readData, BIN);
 		} else
