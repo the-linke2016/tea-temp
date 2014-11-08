@@ -54,20 +54,16 @@ _Bool oneWrite(DS18B20_t *sensor) {
 }
 
 _Bool oneRead(DS18B20_t *sensor) {
-	char temp;
 	uint16_t datatemp;
 	int q;
 	for(q = 0; q < sensor->dataSize; q++) {
 		pinMode(DQ, OUTPUT);
 		digitalWrite(DQ, LOW);
 		pinMode(DQ, INPUT);
-		delayMicroseconds(8);
-		temp = digitalRead(DQ);
-		
-		if(temp == 1) {
+		delayMicroseconds(10);
+		if(digitalRead(DQ)) {
 			datatemp |= 0x8000;
 			datatemp >> 1;
-			
 		} else {
 			datatemp >> 1;
 		}
