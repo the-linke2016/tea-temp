@@ -1,1 +1,1 @@
-"./tea_temp.obj" "../lnk_msp430f5529.cmd" -l"libmath.a" -l"libc.a" 
+"./tea_temp.obj" "../lnk_msp430f5529.cmd" -l"libc.a" -l"libmath.a" 

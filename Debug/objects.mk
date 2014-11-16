@@ -4,5 +4,5 @@
 
 USER_OBJS :=
 
-LIBS := -l"libmath.a" -l"libc.a"
+LIBS := -l"libc.a" -l"libmath.a"
 

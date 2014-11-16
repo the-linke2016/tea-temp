@@ -2,14 +2,14 @@
 # Automatically-generated file. Do not edit!
 ################################################################################
 
-CG_TOOL_ROOT := /opt/ti/ccsv5/tools/compiler/msp430_4.2.1
+CG_TOOL_ROOT := /opt/ti/ccsv6/tools/compiler/msp430_4.3.3
 
 ORDERED_OBJS += \
 $(GEN_CMDS__FLAG) \
 "./tea_temp.obj" \
 "../lnk_msp430f5529.cmd" \
--l"libmath.a" \
 -l"libc.a" \
+-l"libmath.a" \
 
 -include ../makefile.init
 
@@ -106,6 +106,18 @@ endif
 -include ../makefile.defs
 
 # Add inputs and outputs from these tool invocations to the build variables 
+EXE_OUTPUTS += \
+tea_temp.out \
+
+EXE_OUTPUTS__QUOTED += \
+"tea_temp.out" \
+
+BIN_OUTPUTS += \
+tea_temp.hex \
+
+BIN_OUTPUTS__QUOTED += \
+"tea_temp.hex" \
+
 
 # All Target
 all: tea_temp.out
@@ -114,13 +126,19 @@ all: tea_temp.out
 tea_temp.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: MSP430 Linker'
-	"/opt/ti/ccsv5/tools/compiler/msp430_4.2.1/bin/cl430" -vmspx --abi=eabi --advice:power=all -g --define=__MSP430F5529__ --diag_warning=225 --display_error_number --diag_wrap=off --silicon_errata=CPU21 --silicon_errata=CPU22 --silicon_errata=CPU23 --silicon_errata=CPU40 --printf_support=minimal -z -m"tea_temp.map" --heap_size=160 --stack_size=160 --use_hw_mpy=F5 -i"/opt/ti/ccsv5/ccs_base/msp430/include" -i"/opt/ti/ccsv5/tools/compiler/msp430_4.2.1/lib" -i"/opt/ti/ccsv5/tools/compiler/msp430_4.2.1/include" -i"/opt/ti/ccsv5/ccs_base/msp430/lib" --reread_libs --warn_sections --display_error_number --diag_wrap=off --xml_link_info="tea_temp_linkInfo.xml" --rom_model -o "tea_temp.out" $(ORDERED_OBJS)
+	"/opt/ti/ccsv6/tools/compiler/msp430_4.3.3/bin/cl430" -vmspx --abi=eabi --data_model=restricted -Ooff --advice:power="all" -g --gcc --define=__MSP430F5529__ --diag_warning=225 --display_error_number --diag_wrap=off --silicon_errata=CPU21 --silicon_errata=CPU22 --silicon_errata=CPU23 --silicon_errata=CPU40 --printf_support=minimal -z -m"tea_temp.map" --heap_size=160 --stack_size=160 --use_hw_mpy=F5 --cinit_hold_wdt=on -i"/opt/ti/ccsv6/ccs_base/msp430/include" -i"/opt/ti/ccsv6/tools/compiler/msp430_4.3.3/lib" -i"/opt/ti/ccsv6/tools/compiler/msp430_4.3.3/include" -i"/opt/ti/ccsv6/ccs_base/msp430/lib" -i"/opt/ti/ccsv6/ccs_base/msp430/lib/5xx_6xx_FRxx" --reread_libs --warn_sections --display_error_number --diag_wrap=off --xml_link_info="tea_temp_linkInfo.xml" --rom_model -o "tea_temp.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: $@'
+	@echo ' '
+
+tea_temp.hex: $(EXE_OUTPUTS)
+	@echo 'Invoking: MSP430 Hex Utility'
+	"/opt/ti/ccsv6/tools/compiler/msp430_4.3.3/bin/hex430" --memwidth=8 --romwidth=8 -o "tea_temp.hex" $(EXE_OUTPUTS__QUOTED)
+	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(MSP430_EXECUTABLE_OUTPUTS__QUOTED) "tea_temp.out"
+	-$(RM) $(EXE_OUTPUTS__QUOTED)$(BIN_OUTPUTS__QUOTED)
 	-$(RM) "tea_temp.pp" 
 	-$(RM) "tea_temp.obj" 
 	-@echo 'Finished clean'
