@@ -38,45 +38,73 @@ extern DS18B20_t tempSensor = {
 },
 		*pTempSensor = &tempSensor;
 
-void main() {
+void systemInit(void) {
 
 	WDTCTL = WDTPW | WDTHOLD;				// Stop watchdog timer
 
 	//------- VCORE RESET SECTION -------//
 	PMMCTL0_H = 0xA5; 						// Open PMM module registers for write access
-	PMMCTL0 = 0xA500 + PMMCOREV_2; 			// Set VCore to 1.75 V
+	PMMCTL0 = 0xA500 + PMMCOREV_3; 			// Set VCore to 1.85 V
 	SVSMLCTL = SVMLE + SVSMLRRL_6; 			// Set SVM new Level
 	while ((PMMIFG & SVSMLDLYIFG) == 0); 	// Wait till SVM is settled (Delay)
 	PMMIFG &= ~(SVMLVLRIFG + SVMLIFG); 		// Clear already set flags
-	if ((PMMIFG & SVMLIFG))					// Wait till level is reached
+	if ((PMMIFG & SVMLIFG))	;				// Wait till level is reached
 	//while ((PMMIFG & SVMLVLRIFG) == 0);
 	SVSMLCTL &= ~SVMLE;						// Disable Low side SVM
 	PMMCTL0_H = 0x00;						// Lock PMM module registers for write access
 	//------- END VCORE RESET SECTION -------//
 
 	//------- CLOCK CONFIG SECTION -------//
+	P1DIR = 0x01;
+	P1SEL = 0x01;
 	P5SEL |= 0x0C;					// set XT2 crystal pins as clock pins, not I/O
-	UCSCTL2 = FLLD0 + FLLN6;		// times 2, times 65 (theoretical freq. DCOCLK = 4.259MHz,
-									// DCOCLKDIV = 2.129MHz if my guesses are correct)
-	UCSCTL3 = SELREF1;				// select internal 32.768 kHz reference clock
-	UCSCTL4_L = 0x54;
-	UCSCTL4_H = 0x05;
+	UCSCTL3 = SELREF__XT2CLK;		// select XT2 as FLL reference clock
+	UCSCTL1 = DCORSEL_6;			// select proper DCO tap based on expected freq, below
+	UCSCTL2 = FLLD__2 + FLLN1;		// times 2, times 3. With XT2 at 4MHz, DCOCLK will be
+									// 24MHz, and DCOCLKDIV will be 12MHz
+	UCSCTL4 = SELA__XT2CLK + SELS__DCOCLKDIV + \
+			SELM__DCOCLK;			// set ACLK to XT2 (4MHz), MCLK to DCOCLK (24MHz),
+									// SMCLK to DCOCLKDIV (12MHz)
+	UCSCTL5 = DIVS__2;	// Divide SMCLK down to 6MHz
 	//------- END CLOCK CONFIG -------//
-	//------- SPI CONFIG -------//
-	// P2.7 = UCA0CLK, P3.2 = UCA0STE, P3.3 = UCA0SIMO, P3.4 = UCA0SOMI
-	UCA0CTL1 = UCSWRST; // enable USCI reset mode, for safety
-	P2SEL |= 0x80; // P2.7 as Peripheral
-	P3SEL |= 0x1C; // P3.2,3.3,3.4 as peripheral
-	UCA0CTL0 = UCMST + UCMSB + UCMODE_2 + UCSYNC; // master mode, 4-pin SPI (synchronous), MSB first
-	UCA0CTL1 = UCSSEL0; // USCI clock from ACLK
 
-	UCA0CTL1 &= ~UCSWRST; // enable USCI
+	//------- SPI CONFIG -------//
+	// P2.7 = UCA0CLK, P3.2 = CS, P3.3 = UCA0SIMO, P3.4 = UCA0SOMI
+
+	UCA0CTL1 = UCSWRST; 				// enable USCI reset mode, for safety
+	UCA0CTL0 = UCMST + UCMSB + UCSYNC; 	// master mode, 3-pin SPI (synchronous), MSB first, no STE
+	UCA0CTL1 = UCSSEL0; 				// BRCLK from ACLK
+	UCA0BR0 = 0x03; 					// divide BRCLK by 4 (3+1) (1MHz?)
+
+	P3DIR |= 0x04; 			// P3.2 output
+	P3OUT |= 0x04; 			// set CS high
+	P2SEL |= 0x80; 			// P2.7 Peripheral Control
+	P3SEL |= 0x18; 			// P3.3,3.4 Peripheral Control
+	UCA0CTL1 &= ~UCSWRST; 	// enable USCI
+	UCA0IFG &= ~(UCTXIFG);  // clear flag
 	//-------END SPI CONFIG -------//
 
 	//------- UART CONFIG -------//
 	// UART pins UCA1TXD(P4.4) and UCA1RXD(P4.5) are connected through the ezFET debug interface
+	UCA1CTL1 = UCSWRST;		// enter USCI reset mode, for safety
 
+	PMAPKEYID = PMAPKEY; 		// unlock port map control register
+	PMAPCTL = PMAPRECFG;		// allow multiple reconfigurations
+	P4MAP4 = PM_UCA1TXD;		// set 4.4 as UART TX
+	P4MAP5 = PM_UCA1RXD;		// set 4.5 as UART RX
+	PMAPKEYID = 0x034F1;		// write bad key to close lock
+	P4SEL |= 30; 				// set 4.4 & 4.5 to peripheral control
+	UCA1CTL1 = UCSSEL__ACLK;	// choose ACLK (4MHz)
+	UCA1BRW = 208;				// Baud rate settings for 19200 baud
+	UCA1MCTL = UCBRS0 + UCBRS1;
+	UCA1CTL1 &= ~UCSWRST;		// release USCI reset
+	UCA1IE = UCRXIE;
 	//------- END UART -------//
+}
+void main() {
+
+	systemInit();
+
 	// set display
 	pTempDisplay->updated = setDispString(pTempDisplay);
 
