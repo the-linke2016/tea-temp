@@ -1,32 +1,21 @@
 #include <msp430.h>
+#include <intrinsics.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "max7219.h"
+#include "lcd44780.h"
 #include "ds18b20.h"
 
-extern Max7219_t tempDisplay = { // create a new display structure
-		{
-				(DIGIT0 | BLANK),
-				(DIGIT1 | BLANK),
-				(DIGIT2 | BLANK),
-				(DIGIT3 | BLANK),
-				(DIGIT4 | BLANK),
-				(DIGIT5 | BLANK),
-				(DIGIT6 | BLANK),
-				(DIGIT7 | BLANK), // rest of digits blank
-				(INTENSE | LEVEL10),
-				(SHUTDWN | OFF),
-				(SCANL | SCAN_8),
-				(DTEST | TESTOFF),
-				(DECMODE | NODECODE),
-				(ENDLIST)
-		},
-		false,	// updated false initially
-		"        " //initial string
+extern LCD_t dispLCD = {
+		0x00,					// current output instruction/data
+		" ",
+		" ",					// 32 blank characters to start
+		0x00,					// character postion
+		false					// updated since last change
 },
-*pTempDisplay = &tempDisplay; // create a pointer to the display
+*pDispLCD = &dispLCD;
 
 extern DS18B20_t tempSensor = {
 		0,		// readData
@@ -38,6 +27,28 @@ extern DS18B20_t tempSensor = {
 },
 		*pTempSensor = &tempSensor;
 
+/*
+char out[] = { "The UART works, baby!\n" };
+char *pOut = out;
+
+void uart_puts(char *c, int length) {
+	int i;
+	for(i = 0; i < length; i++) {
+		while(!(UCA1IFG & UCTXIFG));
+		UCA1TXBUF = *c + i;
+	}
+}
+
+void uart_putc(char c) {
+	while(!(UCA1IFG & UCTXIFG));
+	UCA1TXBUF = c;
+}
+
+void uart_newl(void) {
+	while(!(UCA1IFG & UCTXIFG));
+	UCA1TXBUF = 0x0A;
+}
+ */
 void systemInit(void) {
 
 	WDTCTL = WDTPW | WDTHOLD;				// Stop watchdog timer
@@ -62,26 +73,26 @@ void systemInit(void) {
 	UCSCTL1 = DCORSEL_6;			// select proper DCO tap based on expected freq, below
 	UCSCTL2 = FLLD__2 + FLLN1;		// times 2, times 3. With XT2 at 4MHz, DCOCLK will be
 									// 24MHz, and DCOCLKDIV will be 12MHz
-	UCSCTL4 = SELA__XT2CLK + SELS__DCOCLKDIV + \
-			SELM__DCOCLK;			// set ACLK to XT2 (4MHz), MCLK to DCOCLK (24MHz),
+	UCSCTL4 = SELA__DCOCLKDIV + SELS__DCOCLKDIV + SELM__DCOCLK;
+									// set ACLK to XT2 (4MHz), MCLK to DCOCLK (24MHz),
 									// SMCLK to DCOCLKDIV (12MHz)
-	UCSCTL5 = DIVS__2;	// Divide SMCLK down to 6MHz
+	UCSCTL5 = DIVS__2 + DIVA__4;	// Divide SMCLK down to 6MHz
 	//------- END CLOCK CONFIG -------//
 
 	//------- SPI CONFIG -------//
 	// P2.7 = UCA0CLK, P3.2 = CS, P3.3 = UCA0SIMO, P3.4 = UCA0SOMI
-
-	UCA0CTL1 = UCSWRST; 				// enable USCI reset mode, for safety
-	UCA0CTL0 = UCMST + UCMSB + UCSYNC; 	// master mode, 3-pin SPI (synchronous), MSB first, no STE
-	UCA0CTL1 = UCSSEL0; 				// BRCLK from ACLK
-	UCA0BR0 = 0x03; 					// divide BRCLK by 4 (3+1) (1MHz?)
-
-	P3DIR |= 0x04; 			// P3.2 output
-	P3OUT |= 0x04; 			// set CS high
 	P2SEL |= 0x80; 			// P2.7 Peripheral Control
 	P3SEL |= 0x18; 			// P3.3,3.4 Peripheral Control
+	P3DIR |= 0x04; 			// P3.2 output
+	P3OUT &= ~0x04; 		// set CS low
+
+	UCA0CTL1 = UCSWRST; 							// enable USCI reset mode, for safety
+	UCA0CTL0 = UCMST + UCMSB + UCSYNC + UCCKPH; 	// master mode, 3-pin SPI (synchronous), MSB first, no STE
+	UCA0CTL1 = UCSSEL0; 							// BRCLK from ACLK
+	//UCA0BR0 |= 0x03; 								// divide BRCLK by 4 (3+1) (1MHz?)
+	//UCA0BR1 = 0;
 	UCA0CTL1 &= ~UCSWRST; 	// enable USCI
-	UCA0IFG &= ~(UCTXIFG);  // clear flag
+
 	//-------END SPI CONFIG -------//
 
 	//------- UART CONFIG -------//
