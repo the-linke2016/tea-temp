@@ -111,51 +111,80 @@ void systemInit(void) {
 	UCA1CTL1 &= ~UCSWRST;		// release USCI reset
 	UCA1IE = UCRXIE;
 	//------- END UART -------//
+
+	//------- BUTTON SETUP -------//
+	// Buttons S2 and S1 are on pins P1.1 and P2.1 respectively
+	P2REN |= 0x02; // P2.1 resistor enable
+	P2OUT |= 0x02; // P2.1 pullup on
+
+	P2IES |= 0x02; //falling edge interrupt P2.1
+	P2IFG &= ~(0x02);
+	P2IE |= 0x02; // interrupt enabled, P2.1
+	//------- END BUTTON -------//
 }
+
 void main() {
 
 	systemInit();
 
-	// set display
-	pTempDisplay->updated = setDispString(pTempDisplay);
+	P4DIR |= 0x80;
+	TA0CTL = TASSEL_1 + MC_2 + ID_3 + TACLR + TAIE;  // ACLK, contmode, clear TAR
+	                                            	// enable interrupt
+	offLED();
+	LCDsetup(pDispLCD);
+	if(pDispLCD->updated) ;
+	sprintf(pDispLCD->line_one, "Testing 1 2 3");
+	sprintf(pDispLCD->line_two, "Aww hell yes!!");
+	pDispLCD->position = 0;
+	pDispLCD->updated = false;
+	LCDset(pDispLCD);
+	if(pDispLCD->updated)
+		onLED();
 
-	if(pTempDisplay->updated == true)
-		Serial.println("Display updated!");
-	else
-		Serial.println("What the hell happened?");
-
-	if(oneInit())
-		Serial.println("1-Wire presence pulse detected");
-	else
-		Serial.println("No presence pulse, damn!");
+	__bis_SR_register(LPM1_bits + GIE);	// enable GIE and enter LPM1
+	__no_operation();
 
 	// LOOP SECTION -----D-E-B-U-G--O-N-L-Y-----
 	while(1) {
-		_Bool onewireRead = false;
-		oneInit();
-		pTempSensor->writeData = 0x00CC;
-		pTempSensor->dataSize = 8;
-		oneWrite(pTempSensor);
-		pTempSensor->writeData = 0x0044;
-		oneWrite(pTempSensor);
-		delay(750);
-		oneInit();
-		pTempSensor->writeData = 0x00CC;
-		oneWrite(pTempSensor);
-		pTempSensor->writeData = 0x00BE;
-		oneWrite(pTempSensor);
-		pTempSensor->dataSize = 16;
-		onewireRead = oneRead(pTempSensor);
-		oneInit();
-		if(onewireRead) {
-			sprintf(pTempDisplay->string, "    %04.2f", convThermString(pTempSensor));
-			setDispString(pTempDisplay);
-			Serial.print("Data read was: ");
-			Serial.println(pTempDisplay->string);
-		} else
-			Serial.println("Some kind of read error.");
-		delay(2000); // wait a second
+		__no_operation();
 	}
+}
+
+#if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
+#pragma vector=PORT2_VECTOR
+__interrupt void PORT2_ISR(void)
+#elif defined(__GNUC__)
+void __attribute__ ((interrupt(PORT2_VECTOR))) PORT2_ISR (void)
+#else
+#error Compiler not supported!
+#endif
+{
+
+	sprintf(pDispLCD->line_one, "Switched!       ");
+	pDispLCD->updated = false;
+	P2IE &= ~(0x02); //disable this interrupt
+}
+
+#if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
+#pragma vector=TIMER0_A1_VECTOR
+__interrupt void TIMER0_A1_ISR(void)
+#elif defined(__GNUC__)
+void __attribute__ ((interrupt(TIMER0_A1_VECTOR))) TIMER0_A1_ISR (void)
+#else
+#error Compiler not supported!
+#endif
+{
+	switch(__even_in_range(TA0IV,14))
+	  {
+	    case 14:
+	    		if(!pDispLCD->updated)	{	// overflow
+	    			pDispLCD->position = 0;
+	    			LCDset(pDispLCD);
+	    			P2IE |= 0x02;
+	    		}
+	             break;
+	    default: break;
+	  }
 }
 
 
