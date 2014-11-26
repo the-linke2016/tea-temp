@@ -179,8 +179,8 @@ void LCDset(LCD_t *temp) {
 	LCDput(temp);
 	_delay_cycles(50000);
 
-	unsigned int charPosition = 0;	// this represents where we are on each line
-	unsigned int ddrPosition = 0;	// only needs to change once, to switch lines as
+	uint_fast8_t charPosition = 0;	// this represents where we are on each line
+	uint_fast8_t ddrPosition = 0;	// only needs to change once, to switch lines as
 									// the cursor auto-increments for us
 
 	for(charPosition = 0; charPosition < 0x10; charPosition++) {
@@ -190,7 +190,7 @@ void LCDset(LCD_t *temp) {
 		LCDcharset(temp);
 	}
 	ddrPosition = 0x40; // move to second line
-	temp->lcdout = (ddraddress | ddrPosition); // move cursor to our starting position
+	temp->lcdout = (ddraddress | ddrPosition); // move cursor to second line
 	LCDput(temp);
 
 	for(charPosition = 0; charPosition < 0x10; charPosition++) {
@@ -209,7 +209,7 @@ void LCDsetup(LCD_t *temp) {
 	LCDput(temp);
 	temp->lcdout = (entrymode | 0x02); // cursor increment
 	LCDput(temp);
-	temp->lcdout = (displayonoff | 0x06); // display on, cursor on, blink off
+	temp->lcdout = (displayonoff | 0x04); // display on, cursor off, blink off
 	LCDput(temp);
 	temp->lcdout = (cursorhome);
 	LCDput(temp);

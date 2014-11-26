@@ -17,10 +17,10 @@ OUTPUT TRANSLATION MAP
 --------------------------------------------------------------------------------
    OUTPUT FILES: tea_temp.txt [b0..b7]
 
-   CONTENTS: 00004400..00004579   tea_temp.out(.const)
-             0000457a..000045f3   tea_temp.out(.text:_isr)
-             000045f4..00008573   tea_temp.out(.text)
-             00008574..000085cf   tea_temp.out(.cinit)
+   CONTENTS: 00004400..0000457f   tea_temp.out(.const)
+             00004580..00004609   tea_temp.out(.text:_isr)
+             0000460a..00008775   tea_temp.out(.text)
+             00008776..000087d1   tea_temp.out(.cinit)
              0000ffd2..0000ffd3   tea_temp.out(RTC)
              0000ffd4..0000ffd5   tea_temp.out(PORT2)
              0000ffd6..0000ffd7   tea_temp.out(TIMER2_A1)

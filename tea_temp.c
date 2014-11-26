@@ -38,11 +38,15 @@ void systemInit(void) {
 	//------- VCORE RESET SECTION -------//
 	PMMCTL0_H = 0xA5; 						// Open PMM module registers for write access
 	PMMCTL0 = 0xA500 + PMMCOREV_3; 			// Set VCore to 1.85 V
-	SVSMLCTL = SVMLE + SVSMLRRL_6; 			// Set SVM new Level
-	while ((PMMIFG & SVSMLDLYIFG) == 0); 	// Wait till SVM is settled (Delay)
+	SVSMLCTL = SVMLE + SVSMLRRL_6 + SVSLFP + \
+				SVSLRVL_3 + SVSLE + SVMLFP;	// Enable Vcore supply monitor, level 6, high performance mode,
+											// and Vcore supply supervisor, level 3, high performance mode.
+	SVSMHCTL = SVSHE + SVSHFP + SVSHRVL_3 + \
+				SVSMHRRL_3;					// Enable DVcc supply supervisor, level 3, high performace
+	while ((PMMIFG & SVSMLDLYIFG) == 0); 	// Wait for Vcore delay element to expire
 	PMMIFG &= ~(SVMLVLRIFG + SVMLIFG); 		// Clear already set flags
-	if ((PMMIFG & SVMLIFG))	;				// Wait till level is reached
-	//while ((PMMIFG & SVMLVLRIFG) == 0);
+	if ((PMMIFG & SVMLIFG))					// If Vcore still below target, wait for it to rise
+		while ((PMMIFG & SVMLVLRIFG) == 0);
 	SVSMLCTL &= ~SVMLE;						// Disable Low side SVM
 	PMMCTL0_H = 0x00;						// Lock PMM module registers for write access
 	//------- END VCORE RESET SECTION -------//
@@ -109,18 +113,24 @@ void main() {
 	systemInit(); // MCLK is 24MHz, SMCLK is 6MHz, ACLK is 1MHz
 
 	P4DIR |= 0x80;
+	P7DIR |= 0x10; // P7.4 is our profiling pin
 	TA0CTL = TASSEL__ACLK + MC_2 + TACLR + TAIE;  // ACLK, contmode, clear TAR, 1/(32768/65535) = ~2s
 	                                            	 // enable interrupt
+
+	//------- INITIALIZE LCD -------//
 	offLED();
 	LCDsetup(pDispLCD);
 	if(pDispLCD->updated) ;
-	sprintf(pDispLCD->line_one, "Temp: 00.0 C");
-	sprintf(pDispLCD->line_two, "Genmaicha T 0:30");
+	snprintf(pDispLCD->line_one, 17, "...WARMING UP...");
+	snprintf(pDispLCD->line_two, 17, "Genmaicha T 0:30");
 	pDispLCD->position = 0;
 	pDispLCD->updated = false;
 	LCDset(pDispLCD);
 	if(pDispLCD->updated)
 		onLED();
+	//------- END LCD INIT -------//
+
+	checkTempSensor(pTempSensor);
 
 	getTemp(pTempSensor);
 	sprintf(temp, "Raw temp: %u", pTempSensor->readData);
@@ -150,11 +160,13 @@ void __attribute__ ((interrupt(TIMER0_A1_VECTOR))) TIMER0_A1_ISR (void)
 	switch(__even_in_range(TA0IV,14))
 	  {
 	    case 14:	// overflow
+	    			P7OUT |= 0x10;
 	    			getTemp(pTempSensor);
 	    			convThermString(pTempSensor);
-	    			sprintf(pDispLCD->line_one, "Temp: %s C", pTempSensor->thermData);
+	    			snprintf(pDispLCD->line_one, 17, "Temp: %s C  ", pTempSensor->thermData);
 	    			pDispLCD->position = 0;
 	    			LCDset(pDispLCD);
+	    			P7OUT &= ~0x10;
 	             break;
 	    default: break;
 	  }
