@@ -7,6 +7,9 @@
 *.xml
 *.pp
 *.cmd
+*.asm
+*.out
 .ccsproject
 .csproject
 
+/Debug

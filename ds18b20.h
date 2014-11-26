@@ -6,13 +6,18 @@
 
 #define _1us	24
 #define _5us	120
+#define _6us	144
 #define _10us	240
-#define _55us	1320
+#define _20us	480
+#define _50us	1200
 #define _60us	1440
+#define _64us	1536
 #define _90us	2160
-#define _120us	2880
 #define _390us	9360
 #define _500us	12000
+
+#define _1ms 	24000
+#define _750ms	18000000
 
 char crctable[256] = {
 		0, 94, 188, 226, 97, 63, 221, 131, 194, 156, 126, 32, 163, 253, 31,
@@ -64,19 +69,20 @@ _Bool oneWrite(DS18B20_t *sensor) {
 	int q;
 	for(q = 0; q < sensor->dataSize; q++) {
 		temp = (sensor->writeData >> q) & 0x0001;
-		if(temp) {
-			P8DIR |= 0x02;
-			P8OUT &= ~(0x02);
-			_delay_cycles(_5us);
-			P8DIR &= ~(0x02);
-			_delay_cycles(_55us);
-		} else {
-			P8DIR |= 0x02;
-			P8OUT &= ~(0x02);
-			_delay_cycles(_120us);
-			P8DIR &= ~(0x02);
+		if(temp) {					// send a 1
+			P8DIR |= 0x02; 			// output
+			P8OUT &= ~(0x02); 		// pull down
+			_delay_cycles(_6us);
+			P8DIR &= ~(0x02); 		// input/tristate
+			_delay_cycles(_64us);
+		} else {					// send a 0
+			P8DIR |= 0x02; 			// output
+			P8OUT &= ~(0x02); 		// pull down
+			_delay_cycles(_50us);
+			P8DIR &= ~(0x02); 		// input/tristate
+			_delay_cycles(_20us);
 		}
-		_delay_cycles(_10us);
+		_delay_cycles(_5us);		// end of window
 	}
 	return true;
 }
@@ -87,21 +93,46 @@ _Bool oneRead(DS18B20_t *sensor) {
 	for(q = sensor->dataSize; q > 0; q--) {
 		P8DIR |= 0x02;
 		P8OUT &= ~(0x02); // pull low to signal start of bit
-		P8DIR &= ~(0x02);
-		_delay_cycles(_10us);
+		_delay_cycles(_6us);
+		P8DIR &= ~(0x02); // input/tristate
+		_delay_cycles(_6us);
 		if((P8IN & 0x02)) {
-			datatemp |= 0x8000;
-			datatemp >>= 1;
+			if(q == 1) {
+				datatemp |= 0x8000;
+			}
+			else {
+				datatemp |= 0x8000;
+				datatemp >>= 1;
+			}
 		} else {
-			datatemp >>= 1;
+			if(q == 1)
+				__no_operation;
+			else
+				datatemp >>= 1;
 		}
 		_delay_cycles(_60us);
 	}
 	sensor->readData = datatemp;
 	return true;
 }
-
-float convThermString(DS18B20_t *sensor) {
+void getTemp(DS18B20_t *sensor) {
+	oneInit();
+	sensor->dataSize = 8;
+	sensor->writeData = 0xCC;
+	oneWrite(sensor); // skip ROM
+	sensor->writeData = 0x44;
+	oneWrite(sensor); // therm conv
+	_delay_cycles(_750ms);
+	oneInit();
+	sensor->writeData = 0xCC;
+	oneWrite(sensor);
+	sensor->writeData = 0xBE;
+	oneWrite(sensor);
+	sensor->dataSize = 16;
+	oneRead(sensor);
+	oneInit();
+}
+void convThermString(DS18B20_t *sensor) {
 	uint16_t temp = sensor->readData;
 	float whole;
 	whole = (float)(temp >> 4);
@@ -116,7 +147,7 @@ float convThermString(DS18B20_t *sensor) {
 	if(temp & 0x0008)
 		whole += 0.5;
 	
-	return whole;
+	sprintf(sensor->thermData, "%f", whole);
 	
 }
 

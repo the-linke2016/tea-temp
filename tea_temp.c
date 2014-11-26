@@ -19,15 +19,17 @@ extern LCD_t dispLCD = {
 *pDispLCD = &dispLCD;
 
 extern DS18B20_t tempSensor = {
-		0,		// readData
-		0,		// writeData
-		0,		// romCode
-		0,		// dataSize
-		false,	// updated
-		"null",	// thermData[14]
-		0		// CRC
+		0,		// readData uint16_t
+		0,		// writeData uint32_t
+		0,		// romCode uint64_t
+		0,		// dataSize char
+		false,	// updated _Bool
+		"null",	// thermData char[14]
+		0		// CRC char
 },
 		*pTempSensor = &tempSensor;
+
+char temp[64];
 
 void systemInit(void) {
 
@@ -93,12 +95,12 @@ void systemInit(void) {
 
 	//------- BUTTON SETUP -------//
 	// Buttons S2 and S1 are on pins P1.1 and P2.1 respectively
-	P2REN |= 0x02; // P2.1 resistor enable
-	P2OUT |= 0x02; // P2.1 pullup on
-
-	P2IES |= 0x02; //falling edge interrupt P2.1
-	P2IFG &= ~(0x02);
-	P2IE |= 0x02; // interrupt enabled, P2.1
+//	P2REN |= 0x02; // P2.1 resistor enable
+//	P2OUT |= 0x02; // P2.1 pullup on
+//
+//	P2IES |= 0x02; //falling edge interrupt P2.1
+//	P2IFG &= ~(0x02);
+//	P2IE |= 0x02; // interrupt enabled, P2.1
 	//------- END BUTTON -------//
 }
 
@@ -112,16 +114,20 @@ void main() {
 	offLED();
 	LCDsetup(pDispLCD);
 	if(pDispLCD->updated) ;
-	sprintf(pDispLCD->line_one, "Testing 1 2 3");
-	sprintf(pDispLCD->line_two, "Aww hell yes!!");
+	sprintf(pDispLCD->line_one, "Temp: 00.0 C");
+	sprintf(pDispLCD->line_two, "Genmaicha T 0:30");
 	pDispLCD->position = 0;
 	pDispLCD->updated = false;
 	LCDset(pDispLCD);
 	if(pDispLCD->updated)
 		onLED();
 
-	uart_puts(pOut, 22);
-	uart_newl();
+	getTemp(pTempSensor);
+	sprintf(temp, "Raw temp: %u", pTempSensor->readData);
+	uart_puts(temp, 13);
+	convThermString(pTempSensor);
+	sprintf(temp, "Converted temp: %s", pTempSensor->thermData);
+	uart_puts(temp, 24);
 
 	__bis_SR_register(LPM1_bits + GIE);	// enable GIE and enter LPM1
 	__no_operation();
@@ -130,21 +136,6 @@ void main() {
 	while(1) {
 		__no_operation();
 	}
-}
-
-#if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
-#pragma vector=PORT2_VECTOR
-__interrupt void PORT2_ISR(void)
-#elif defined(__GNUC__)
-void __attribute__ ((interrupt(PORT2_VECTOR))) PORT2_ISR (void)
-#else
-#error Compiler not supported!
-#endif
-{
-
-	sprintf(pDispLCD->line_one, "Switched!       ");
-	pDispLCD->updated = false;
-	P2IE &= ~(0x02); //disable this interrupt
 }
 
 #if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
@@ -160,9 +151,11 @@ void __attribute__ ((interrupt(TIMER0_A1_VECTOR))) TIMER0_A1_ISR (void)
 	  {
 	    case 14:	// overflow
 	    		if(!pDispLCD->updated)	{
+	    			getTemp(pTempSensor);
+	    			convThermString(pTempSensor);
+	    			sprintf(pDispLCD->line_one, "Temp: %2.1f C", pTempSensor->thermData);
 	    			pDispLCD->position = 0;
 	    			LCDset(pDispLCD);
-	    			P2IE |= 0x02;
 	    		}
 	             break;
 	    default: break;
