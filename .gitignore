@@ -2,6 +2,11 @@
 *.bin
 *.elf
 .*
-/Debug/*
-/lnk_msp430f5529.cmd
-/Debug
+*.mk
+*.obj
+*.xml
+*.pp
+*.cmd
+.ccsproject
+.csproject
+
