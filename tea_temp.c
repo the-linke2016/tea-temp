@@ -1,32 +1,22 @@
 #include <msp430.h>
+#include <intrinsics.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "max7219.h"
+#include "lcd44780.h"
 #include "ds18b20.h"
+#include "debug_uart.h"
 
-extern Max7219_t tempDisplay = { // create a new display structure
-		{
-				(DIGIT0 | BLANK),
-				(DIGIT1 | BLANK),
-				(DIGIT2 | BLANK),
-				(DIGIT3 | BLANK),
-				(DIGIT4 | BLANK),
-				(DIGIT5 | BLANK),
-				(DIGIT6 | BLANK),
-				(DIGIT7 | BLANK), // rest of digits blank
-				(INTENSE | LEVEL10),
-				(SHUTDWN | OFF),
-				(SCANL | SCAN_8),
-				(DTEST | TESTOFF),
-				(DECMODE | NODECODE),
-				(ENDLIST)
-		},
-		false,	// updated false initially
-		"        " //initial string
+extern LCD_t dispLCD = {
+		0x00,					// current output instruction/data
+		" ",
+		" ",					// 32 blank characters to start
+		0x00,					// character postion
+		false					// updated since last change
 },
-*pTempDisplay = &tempDisplay; // create a pointer to the display
+*pDispLCD = &dispLCD;
 
 extern DS18B20_t tempSensor = {
 		0,		// readData
@@ -34,7 +24,8 @@ extern DS18B20_t tempSensor = {
 		0,		// romCode
 		0,		// dataSize
 		false,	// updated
-		"null"	// thermData[14]
+		"null",	// thermData[14]
+		0		// CRC
 },
 		*pTempSensor = &tempSensor;
 
@@ -62,26 +53,25 @@ void systemInit(void) {
 	UCSCTL1 = DCORSEL_6;			// select proper DCO tap based on expected freq, below
 	UCSCTL2 = FLLD__2 + FLLN1;		// times 2, times 3. With XT2 at 4MHz, DCOCLK will be
 									// 24MHz, and DCOCLKDIV will be 12MHz
-	UCSCTL4 = SELA__XT2CLK + SELS__DCOCLKDIV + \
-			SELM__DCOCLK;			// set ACLK to XT2 (4MHz), MCLK to DCOCLK (24MHz),
+	UCSCTL4 = SELA__DCOCLKDIV + SELS__DCOCLKDIV + SELM__DCOCLK;
+									// set ACLK to DCOCLKDIV (12MHz), MCLK to DCOCLK (24MHz),
 									// SMCLK to DCOCLKDIV (12MHz)
-	UCSCTL5 = DIVS__2;	// Divide SMCLK down to 6MHz
+	UCSCTL5 = DIVS__2 + DIVA__4;	// Divide SMCLK down to 6MHz, ACLK down to 1MHz
 	//------- END CLOCK CONFIG -------//
 
 	//------- SPI CONFIG -------//
 	// P2.7 = UCA0CLK, P3.2 = CS, P3.3 = UCA0SIMO, P3.4 = UCA0SOMI
-
-	UCA0CTL1 = UCSWRST; 				// enable USCI reset mode, for safety
-	UCA0CTL0 = UCMST + UCMSB + UCSYNC; 	// master mode, 3-pin SPI (synchronous), MSB first, no STE
-	UCA0CTL1 = UCSSEL0; 				// BRCLK from ACLK
-	UCA0BR0 = 0x03; 					// divide BRCLK by 4 (3+1) (1MHz?)
-
-	P3DIR |= 0x04; 			// P3.2 output
-	P3OUT |= 0x04; 			// set CS high
 	P2SEL |= 0x80; 			// P2.7 Peripheral Control
 	P3SEL |= 0x18; 			// P3.3,3.4 Peripheral Control
+	P3DIR |= 0x04; 			// P3.2 output
+	P3OUT &= ~0x04; 		// set CS low
+
+	UCA0CTL1 = UCSWRST; 							// enable USCI reset mode, for safety
+	UCA0CTL0 = UCMST + UCMSB + UCSYNC + UCCKPH; 	// master mode, 3-pin SPI (synchronous), MSB first, no STE
+	UCA0CTL1 = UCSSEL0; 							// BRCLK from ACLK
+	//UCA0BR0 |= 0x03; 								// divide BRCLK by 4 (3+1) (1MHz?)
 	UCA0CTL1 &= ~UCSWRST; 	// enable USCI
-	UCA0IFG &= ~(UCTXIFG);  // clear flag
+
 	//-------END SPI CONFIG -------//
 
 	//------- UART CONFIG -------//
@@ -92,59 +82,91 @@ void systemInit(void) {
 	PMAPCTL = PMAPRECFG;		// allow multiple reconfigurations
 	P4MAP4 = PM_UCA1TXD;		// set 4.4 as UART TX
 	P4MAP5 = PM_UCA1RXD;		// set 4.5 as UART RX
-	PMAPKEYID = 0x034F1;		// write bad key to close lock
-	P4SEL |= 30; 				// set 4.4 & 4.5 to peripheral control
-	UCA1CTL1 = UCSSEL__ACLK;	// choose ACLK (4MHz)
-	UCA1BRW = 208;				// Baud rate settings for 19200 baud
-	UCA1MCTL = UCBRS0 + UCBRS1;
+	PMAPKEYID = 0x34F1;			// write bad key to close lock
+	P4SEL |= 0x30; 				// set 4.4 & 4.5 to peripheral control
+	UCA1CTL1 = UCSSEL__ACLK;	// choose ACLK (3MHz)
+	UCA1BRW = 156;				// Baud rate settings for 19200 baud
+	UCA1MCTL = UCBRS1;
 	UCA1CTL1 &= ~UCSWRST;		// release USCI reset
 	UCA1IE = UCRXIE;
 	//------- END UART -------//
+
+	//------- BUTTON SETUP -------//
+	// Buttons S2 and S1 are on pins P1.1 and P2.1 respectively
+	P2REN |= 0x02; // P2.1 resistor enable
+	P2OUT |= 0x02; // P2.1 pullup on
+
+	P2IES |= 0x02; //falling edge interrupt P2.1
+	P2IFG &= ~(0x02);
+	P2IE |= 0x02; // interrupt enabled, P2.1
+	//------- END BUTTON -------//
 }
+
 void main() {
 
-	systemInit();
+	systemInit(); // MCLK is 24MHz, SMCLK is 6MHz, ACLK is 1MHz
 
-	// set display
-	pTempDisplay->updated = setDispString(pTempDisplay);
+	P4DIR |= 0x80;
+	TA0CTL = TASSEL_1 + MC_2 + ID_3 + TACLR + TAIE;  // ACLK, contmode, clear TAR
+	                                            	 // enable interrupt
+	offLED();
+	LCDsetup(pDispLCD);
+	if(pDispLCD->updated) ;
+	sprintf(pDispLCD->line_one, "Testing 1 2 3");
+	sprintf(pDispLCD->line_two, "Aww hell yes!!");
+	pDispLCD->position = 0;
+	pDispLCD->updated = false;
+	LCDset(pDispLCD);
+	if(pDispLCD->updated)
+		onLED();
 
-	if(pTempDisplay->updated == true)
-		Serial.println("Display updated!");
-	else
-		Serial.println("What the hell happened?");
+	uart_puts(pOut, 22);
+	uart_newl();
 
-	if(oneInit())
-		Serial.println("1-Wire presence pulse detected");
-	else
-		Serial.println("No presence pulse, damn!");
+	__bis_SR_register(LPM1_bits + GIE);	// enable GIE and enter LPM1
+	__no_operation();
 
 	// LOOP SECTION -----D-E-B-U-G--O-N-L-Y-----
 	while(1) {
-		_Bool onewireRead = false;
-		oneInit();
-		pTempSensor->writeData = 0x00CC;
-		pTempSensor->dataSize = 8;
-		oneWrite(pTempSensor);
-		pTempSensor->writeData = 0x0044;
-		oneWrite(pTempSensor);
-		delay(750);
-		oneInit();
-		pTempSensor->writeData = 0x00CC;
-		oneWrite(pTempSensor);
-		pTempSensor->writeData = 0x00BE;
-		oneWrite(pTempSensor);
-		pTempSensor->dataSize = 16;
-		onewireRead = oneRead(pTempSensor);
-		oneInit();
-		if(onewireRead) {
-			sprintf(pTempDisplay->string, "    %04.2f", convThermString(pTempSensor));
-			setDispString(pTempDisplay);
-			Serial.print("Data read was: ");
-			Serial.println(pTempDisplay->string);
-		} else
-			Serial.println("Some kind of read error.");
-		delay(2000); // wait a second
+		__no_operation();
 	}
+}
+
+#if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
+#pragma vector=PORT2_VECTOR
+__interrupt void PORT2_ISR(void)
+#elif defined(__GNUC__)
+void __attribute__ ((interrupt(PORT2_VECTOR))) PORT2_ISR (void)
+#else
+#error Compiler not supported!
+#endif
+{
+
+	sprintf(pDispLCD->line_one, "Switched!       ");
+	pDispLCD->updated = false;
+	P2IE &= ~(0x02); //disable this interrupt
+}
+
+#if defined(__TI_COMPILER_VERSION__) || defined(__IAR_SYSTEMS_ICC__)
+#pragma vector=TIMER0_A1_VECTOR
+__interrupt void TIMER0_A1_ISR(void)
+#elif defined(__GNUC__)
+void __attribute__ ((interrupt(TIMER0_A1_VECTOR))) TIMER0_A1_ISR (void)
+#else
+#error Compiler not supported!
+#endif
+{
+	switch(__even_in_range(TA0IV,14))
+	  {
+	    case 14:	// overflow
+	    		if(!pDispLCD->updated)	{
+	    			pDispLCD->position = 0;
+	    			LCDset(pDispLCD);
+	    			P2IE |= 0x02;
+	    		}
+	             break;
+	    default: break;
+	  }
 }
 
 
