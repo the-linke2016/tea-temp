@@ -18,6 +18,7 @@ tea_temp.obj: /opt/ti/ccsv6/tools/compiler/msp430_4.3.3/include/stdarg.h
 tea_temp.obj: /opt/ti/ccsv6/tools/compiler/msp430_4.3.3/include/_lock.h
 tea_temp.obj: ../lcd44780.h
 tea_temp.obj: ../ds18b20.h
+tea_temp.obj: ../debug_uart.h
 
 ../tea_temp.c: 
 /opt/ti/ccsv6/ccs_base/msp430/include/msp430.h: 
@@ -37,3 +38,4 @@ tea_temp.obj: ../ds18b20.h
 /opt/ti/ccsv6/tools/compiler/msp430_4.3.3/include/_lock.h: 
 ../lcd44780.h: 
 ../ds18b20.h: 
+../debug_uart.h: 

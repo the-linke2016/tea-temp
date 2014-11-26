@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include "lcd44780.h"
 #include "ds18b20.h"
+#include "debug_uart.h"
 
 extern LCD_t dispLCD = {
 		0x00,					// current output instruction/data
@@ -23,32 +24,11 @@ extern DS18B20_t tempSensor = {
 		0,		// romCode
 		0,		// dataSize
 		false,	// updated
-		"null"	// thermData[14]
+		"null",	// thermData[14]
+		0		// CRC
 },
 		*pTempSensor = &tempSensor;
 
-/*
-char out[] = { "The UART works, baby!\n" };
-char *pOut = out;
-
-void uart_puts(char *c, int length) {
-	int i;
-	for(i = 0; i < length; i++) {
-		while(!(UCA1IFG & UCTXIFG));
-		UCA1TXBUF = *c + i;
-	}
-}
-
-void uart_putc(char c) {
-	while(!(UCA1IFG & UCTXIFG));
-	UCA1TXBUF = c;
-}
-
-void uart_newl(void) {
-	while(!(UCA1IFG & UCTXIFG));
-	UCA1TXBUF = 0x0A;
-}
- */
 void systemInit(void) {
 
 	WDTCTL = WDTPW | WDTHOLD;				// Stop watchdog timer
@@ -74,9 +54,9 @@ void systemInit(void) {
 	UCSCTL2 = FLLD__2 + FLLN1;		// times 2, times 3. With XT2 at 4MHz, DCOCLK will be
 									// 24MHz, and DCOCLKDIV will be 12MHz
 	UCSCTL4 = SELA__DCOCLKDIV + SELS__DCOCLKDIV + SELM__DCOCLK;
-									// set ACLK to XT2 (4MHz), MCLK to DCOCLK (24MHz),
+									// set ACLK to DCOCLKDIV (12MHz), MCLK to DCOCLK (24MHz),
 									// SMCLK to DCOCLKDIV (12MHz)
-	UCSCTL5 = DIVS__2 + DIVA__4;	// Divide SMCLK down to 6MHz
+	UCSCTL5 = DIVS__2 + DIVA__4;	// Divide SMCLK down to 6MHz, ACLK down to 1MHz
 	//------- END CLOCK CONFIG -------//
 
 	//------- SPI CONFIG -------//
@@ -103,11 +83,11 @@ void systemInit(void) {
 	PMAPCTL = PMAPRECFG;		// allow multiple reconfigurations
 	P4MAP4 = PM_UCA1TXD;		// set 4.4 as UART TX
 	P4MAP5 = PM_UCA1RXD;		// set 4.5 as UART RX
-	PMAPKEYID = 0x034F1;		// write bad key to close lock
-	P4SEL |= 30; 				// set 4.4 & 4.5 to peripheral control
-	UCA1CTL1 = UCSSEL__ACLK;	// choose ACLK (4MHz)
-	UCA1BRW = 208;				// Baud rate settings for 19200 baud
-	UCA1MCTL = UCBRS0 + UCBRS1;
+	PMAPKEYID = 0x34F1;			// write bad key to close lock
+	P4SEL |= 0x30; 				// set 4.4 & 4.5 to peripheral control
+	UCA1CTL1 = UCSSEL__ACLK;	// choose ACLK (3MHz)
+	UCA1BRW = 156;				// Baud rate settings for 19200 baud
+	UCA1MCTL = UCBRS1;
 	UCA1CTL1 &= ~UCSWRST;		// release USCI reset
 	UCA1IE = UCRXIE;
 	//------- END UART -------//
@@ -125,11 +105,11 @@ void systemInit(void) {
 
 void main() {
 
-	systemInit();
+	systemInit(); // MCLK is 24MHz, SMCLK is 6MHz, ACLK is 1MHz
 
 	P4DIR |= 0x80;
 	TA0CTL = TASSEL_1 + MC_2 + ID_3 + TACLR + TAIE;  // ACLK, contmode, clear TAR
-	                                            	// enable interrupt
+	                                            	 // enable interrupt
 	offLED();
 	LCDsetup(pDispLCD);
 	if(pDispLCD->updated) ;
@@ -140,6 +120,9 @@ void main() {
 	LCDset(pDispLCD);
 	if(pDispLCD->updated)
 		onLED();
+
+	uart_puts(pOut, 22);
+	uart_newl();
 
 	__bis_SR_register(LPM1_bits + GIE);	// enable GIE and enter LPM1
 	__no_operation();
@@ -176,8 +159,8 @@ void __attribute__ ((interrupt(TIMER0_A1_VECTOR))) TIMER0_A1_ISR (void)
 {
 	switch(__even_in_range(TA0IV,14))
 	  {
-	    case 14:
-	    		if(!pDispLCD->updated)	{	// overflow
+	    case 14:	// overflow
+	    		if(!pDispLCD->updated)	{
 	    			pDispLCD->position = 0;
 	    			LCDset(pDispLCD);
 	    			P2IE |= 0x02;
