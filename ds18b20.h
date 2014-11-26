@@ -106,7 +106,7 @@ _Bool oneRead(DS18B20_t *sensor) {
 			}
 		} else {
 			if(q == 1)
-				__no_operation;
+				;
 			else
 				datatemp >>= 1;
 		}
@@ -147,7 +147,7 @@ void convThermString(DS18B20_t *sensor) {
 	if(temp & 0x0008)
 		whole += 0.5;
 	
-	sprintf(sensor->thermData, "%f", whole);
+	sprintf(sensor->thermData, "%2.1f", whole);
 	
 }
 
