@@ -70,7 +70,6 @@ void systemInit(void) {
 	UCA0CTL0 = UCMST + UCMSB + UCSYNC + UCCKPH; 	// master mode, 3-pin SPI (synchronous), MSB first, no STE
 	UCA0CTL1 = UCSSEL0; 							// BRCLK from ACLK
 	//UCA0BR0 |= 0x03; 								// divide BRCLK by 4 (3+1) (1MHz?)
-	//UCA0BR1 = 0;
 	UCA0CTL1 &= ~UCSWRST; 	// enable USCI
 
 	//-------END SPI CONFIG -------//
