@@ -113,14 +113,14 @@ EXE_OUTPUTS__QUOTED += \
 "tea_temp.out" \
 
 BIN_OUTPUTS += \
-tea_temp.hex \
+tea_temp.txt \
 
 BIN_OUTPUTS__QUOTED += \
-"tea_temp.hex" \
+"tea_temp.txt" \
 
 
 # All Target
-all: tea_temp.out
+all: tea_temp.out secondary-outputs
 
 # Tool invocations
 tea_temp.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
@@ -130,9 +130,9 @@ tea_temp.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
-tea_temp.hex: $(EXE_OUTPUTS)
+tea_temp.txt: $(EXE_OUTPUTS)
 	@echo 'Invoking: MSP430 Hex Utility'
-	"/opt/ti/ccsv6/tools/compiler/msp430_4.3.3/bin/hex430" --memwidth=8 --romwidth=8 -o "tea_temp.hex" $(EXE_OUTPUTS__QUOTED)
+	"/opt/ti/ccsv6/tools/compiler/msp430_4.3.3/bin/hex430" --map="/home/mrowsell/workspace_sketches/tea_temp/Debug/tea_temp.map" --memwidth=8 --romwidth=8 --ti_txt -o "tea_temp.txt" $(EXE_OUTPUTS__QUOTED)
 	@echo 'Finished building: $@'
 	@echo ' '
 
@@ -143,6 +143,8 @@ clean:
 	-$(RM) "tea_temp.obj" 
 	-@echo 'Finished clean'
 	-@echo ' '
+
+secondary-outputs: $(BIN_OUTPUTS)
 
 .PHONY: all clean dependents
 .SECONDARY:
