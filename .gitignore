@@ -12,5 +12,5 @@
 .ccsproject
 .csproject
 
-/Debug
-/Release
+Debug/
+Release/
