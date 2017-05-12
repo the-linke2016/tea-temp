@@ -120,11 +120,9 @@ void main() {
 	//------- INITIALIZE LCD -------//
 	offLED();
 	LCDsetup(pDispLCD);
-	if(pDispLCD->updated)
-		onLED();
+	if(pDispLCD->updated) ;
 	snprintf(pDispLCD->line_one, 17, "...WARMING UP...");
 	snprintf(pDispLCD->line_two, 17, "Genmaicha T 0:30");
-	offLED();
 	pDispLCD->position = 0;
 	pDispLCD->updated = false;
 	LCDset(pDispLCD);
@@ -141,7 +139,7 @@ void main() {
 	sprintf(temp, "Converted temp: %s", pTempSensor->thermData);
 	uart_puts(temp, 24);
 
-	__bis_SR_register(LPM3_bits + GIE);	// enable GIE and enter LPM1
+	__bis_SR_register(LPM1_bits + GIE);	// enable GIE and enter LPM1
 	__no_operation();
 
 	// LOOP SECTION -----D-E-B-U-G--O-N-L-Y-----
@@ -173,7 +171,3 @@ void __attribute__ ((interrupt(TIMER0_A1_VECTOR))) TIMER0_A1_ISR (void)
 	    default: break;
 	  }
 }
-
-
-
-
